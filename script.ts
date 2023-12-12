@@ -1,13 +1,20 @@
+import { Line } from "./linePatcher";
+
+let line = new Line(".wrapper", "#f06", 10);
+
 const video = document.querySelector<HTMLVideoElement>("video");
-const info = document.querySelector<HTMLSpanElement>(".info");
+const info = document.querySelector<HTMLPreElement>(".info");
 
 type WindowDetails = {
-  screenLeft?: number;
-  screenTop?: number;
-  innerHeight?: number;
-  innerWidth?: number;
-  outerHeight?: number;
-  outerWidth?: number;
+  screenWidth: number;
+  screenHeight: number;
+  screenX: number;
+  screenY: number;
+  width: number;
+  height: number;
+  rightBorder: number;
+  downBorder: number;
+  updated: number;
 };
 
 function getScreenId() {
@@ -20,7 +27,6 @@ function getScreenId() {
     const element = screenList[i];
     const currId = parseInt(element[0].replace("screen-", ""));
     if (currId == randNum) {
-      console.log(1111);
       randNum = Math.round(Math.random() * 100);
       i = 0;
     }
@@ -28,46 +34,101 @@ function getScreenId() {
 
   return "screen-" + randNum;
 }
-console.log(getScreenId());
 
-async function startVideo() {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: true,
-  });
+const screenId = getScreenId();
 
-  video.srcObject = stream;
-  video?.play();
+function setScreenDetails() {
+  const windowDetails = {
+    screenWidth: window.screen.availWidth,
+    screenHeight: window.screen.availHeight,
+    screenX: window.screenX,
+    screenY: window.screenY,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    rightBorder: window.screenX + window.innerWidth - 50,
+    downBorder: window.screenY + window.innerHeight - 50,
+    updated: Date.now(),
+  };
+
+  window.localStorage.setItem(screenId, JSON.stringify(windowDetails));
 }
 
-const scrDet: WindowDetails = {
-  screenLeft: window.screenLeft,
-  screenTop: window.screenTop,
-};
+function removeScreen() {
+  console.log(`removed ${screenId}`);
 
-let windowProps = Object.entries(window).filter(
-  ([key, entry]) => typeof entry === "number"
-);
+  window.localStorage.removeItem(screenId);
+}
 
-setInterval(() => {
-  windowProps = Object.entries(window).filter(
-    ([key, entry]) => typeof entry === "number"
+function startVideo() {
+  navigator.mediaDevices
+    .getUserMedia({
+      video: true,
+    })
+    .then((stream) => {
+      if (!video) return;
+      video.width = window.screen.availWidth;
+      video.height = window.screen.availHeight;
+      video.srcObject = stream;
+      video.play();
+    });
+}
+
+function getScreens(): [string, WindowDetails][] {
+  return Object.entries(window.localStorage)
+    .filter(([key]) => key.startsWith("screen-"))
+    .map(([key, value]) => [key, JSON.parse(value) as WindowDetails]);
+}
+
+line.drawLine(1, 1, 1, 1);
+
+function displayStats() {
+  const screens = Object.fromEntries(getScreens());
+  const currScreen = screens[screenId];
+
+  info.innerHTML = JSON.stringify(
+    {
+      currentScreen: currScreen,
+      other: Object.fromEntries(
+        getScreens().filter(([key]) => key !== screenId)
+      ),
+    },
+    null,
+    " "
   );
-  info.innerHTML = `${windowProps.map(
-    ([key, value]) => `<li>${key}: ${value}</li>`
-  )}`.replace(/,/g, "");
-}, 10);
 
+  for (const key in Object.fromEntries(
+    getScreens().filter(([key]) => key !== screenId)
+  )) {
+    if (Object.prototype.hasOwnProperty.call(screens, key)) {
+      const element = screens[key];
+      if (
+        currScreen.rightBorder > element.screenX &&
+        currScreen.screenX < element.rightBorder &&
+        currScreen.downBorder > element.screenY &&
+        currScreen.screenY < element.downBorder
+      ) {
+        console.log(key);
+      }
+
+      line.updateLine(
+        currScreen.width / 2,
+        currScreen.height / 2,
+        element.screenX,
+        element.screenY
+      );
+    }
+  }
+}
+
+const timers: ReturnType<typeof setInterval>[] = [];
+function start() {
+  timers.push(setInterval(setScreenDetails, 50));
+  timers.push(setInterval(displayStats, 50));
+}
+
+start();
+
+window.addEventListener("beforeunload", removeScreen);
 localStorage.clear();
-localStorage.setItem(
-  "screen-3",
-  JSON.stringify(Object.fromEntries(windowProps))
-);
-localStorage.setItem(
-  "screen-12",
-  JSON.stringify(Object.fromEntries(windowProps))
-);
-
-getScreenId();
-// console.log(Object.fromEntries(windowProps));
 
 // startVideo();
