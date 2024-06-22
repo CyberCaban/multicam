@@ -79,6 +79,16 @@ function getScreens(): [string, WindowDetails][] {
     .map(([key, value]) => [key, JSON.parse(value) as WindowDetails]);
 }
 
+let lines = [new Line(".wrapper", `#f05`, 10)];
+
+function initLines() {
+  lines = [];
+  for (let i = 0; i < getScreens().length - 1; i++) {
+    lines.push(new Line(".wrapper", `#f05`, 10));
+    console.log(lines);
+  }
+}
+
 line.drawLine(1, 1, 1, 1);
 
 function displayStats() {
@@ -101,20 +111,20 @@ function displayStats() {
   )) {
     if (Object.prototype.hasOwnProperty.call(screens, key)) {
       const element = screens[key];
-      if (
-        currScreen.rightBorder > element.screenX &&
-        currScreen.screenX < element.rightBorder &&
-        currScreen.downBorder > element.screenY &&
-        currScreen.screenY < element.downBorder
-      ) {
-        console.log(key);
-      }
+      // if (
+      //   currScreen.rightBorder > element.screenX &&
+      //   currScreen.screenX < element.rightBorder &&
+      //   currScreen.downBorder > element.screenY &&
+      //   currScreen.screenY < element.downBorder
+      // ) {
+      //   console.log(key);
+      // }
 
       line.updateLine(
         currScreen.width / 2,
         currScreen.height / 2,
-        element.screenX,
-        element.screenY
+        element.screenX - currScreen.screenX + element.width / 2,
+        element.screenY - currScreen.screenY + element.height / 2
       );
     }
   }
@@ -127,6 +137,7 @@ function start() {
 }
 
 start();
+initLines();
 
 window.addEventListener("beforeunload", removeScreen);
 localStorage.clear();
